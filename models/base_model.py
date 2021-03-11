@@ -1,3 +1,4 @@
+import comet_ml
 import os
 import torch
 import sys
@@ -12,6 +13,7 @@ class BaseModel(torch.nn.Module):
         self.isTrain = opt.isTrain
         self.Tensor = torch.cuda.FloatTensor if self.gpu_ids else torch.Tensor
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+        self._experiment = comet_ml.get_global_experiment()
 
     def set_input(self, input):
         self.input = input
@@ -43,6 +45,7 @@ class BaseModel(torch.nn.Module):
         save_filename = '%s_net_%s.pth' % (epoch_label, network_label)
         save_path = os.path.join(self.save_dir, save_filename)
         torch.save(network.cpu().state_dict(), save_path)
+        self._experiment.log_model(save_filename, save_path)
         if len(gpu_ids) and torch.cuda.is_available():
             network.cuda()
 
