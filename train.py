@@ -58,11 +58,13 @@ display_delta = total_steps % opt.display_freq
 print_delta = total_steps % opt.print_freq
 save_delta = total_steps % opt.save_latest_freq
 
+global_step = 0
 for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
     epoch_start_time = time.time()
     if epoch != start_epoch:
         epoch_iter = epoch_iter % dataset_size
     for i, data in enumerate(dataset, start=epoch_iter):
+        global_step += 1
         if total_steps % opt.print_freq == print_delta:
             iter_start_time = time.time()
         total_steps += opt.batchSize
@@ -82,11 +84,11 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         # calculate final loss scalar
         loss_D = (loss_dict['D_fake'] + loss_dict['D_real']) * 0.5
         loss_G = loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat',0) + loss_dict.get('G_VGG',0)
-        experiment.log_metrics(loss_dict, step=(i+1)*(epoch+1),
+        experiment.log_metrics(loss_dict, step=global_step,
                                epoch=epoch)
-        experiment.log_metric("loss_D", loss_D, step=(i+1)*(epoch+1),
+        experiment.log_metric("loss_D", loss_D, step=global_step,
                               epoch=epoch)
-        experiment.log_metric("loss_G", loss_G, step=(i+1)*(epoch+1),
+        experiment.log_metric("loss_G", loss_G, step=global_step,
                               epoch=epoch)
 
         ############### Backward Pass ####################
