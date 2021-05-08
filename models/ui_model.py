@@ -12,9 +12,9 @@ class UIModel(BaseModel):
     def name(self):
         return 'UIModel'
 
-    def initialize(self, opt):
+    def initialize(self, opt, comet_logger):
         assert(not opt.isTrain)
-        BaseModel.initialize(self, opt)
+        BaseModel.initialize(self, opt, comet_logger)
         self.use_features = opt.instance_feat or opt.label_feat
 
         netG_input_nc = opt.label_nc

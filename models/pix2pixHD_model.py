@@ -16,8 +16,8 @@ class Pix2PixHDModel(BaseModel):
             return [l for (l,f) in zip((g_gan,g_gan_feat,g_vgg,d_real,d_fake),flags) if f]
         return loss_filter
     
-    def initialize(self, opt):
-        BaseModel.initialize(self, opt)
+    def initialize(self, opt, comet_logger):
+        BaseModel.initialize(self, opt, comet_logger)
         if opt.resize_or_crop != 'none' or not opt.isTrain: # when training at full res this causes OOM
             torch.backends.cudnn.benchmark = True
         self.isTrain = opt.isTrain
