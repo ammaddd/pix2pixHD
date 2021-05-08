@@ -1,4 +1,3 @@
-import comet_ml
 import os
 import torch
 import sys
