@@ -1,3 +1,4 @@
+from util.comet_utils import CometLogger
 import time
 import os
 import numpy as np
@@ -33,12 +34,15 @@ if opt.debug:
     opt.niter_decay = 0
     opt.max_dataset_size = 10
 
+comet_logger = CometLogger(opt.comet)
+comet_logger.log_others(vars(opt))
+comet_logger.log_code(file_name="models/pix2pixHD_model.py")
 data_loader = CreateDataLoader(opt)
 dataset = data_loader.load_data()
 dataset_size = len(data_loader)
 print('#training images = %d' % dataset_size)
 
-model = create_model(opt)
+model = create_model(opt, comet_logger)
 visualizer = Visualizer(opt)
 if opt.fp16:    
     from apex import amp
@@ -48,16 +52,19 @@ else:
     optimizer_G, optimizer_D = model.module.optimizer_G, model.module.optimizer_D
 
 total_steps = (start_epoch-1) * dataset_size + epoch_iter
+comet_logger.log_other("total_steps", total_steps)
 
 display_delta = total_steps % opt.display_freq
 print_delta = total_steps % opt.print_freq
 save_delta = total_steps % opt.save_latest_freq
 
+global_step = 0
 for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
     epoch_start_time = time.time()
     if epoch != start_epoch:
         epoch_iter = epoch_iter % dataset_size
     for i, data in enumerate(dataset, start=epoch_iter):
+        global_step += 1
         if total_steps % opt.print_freq == print_delta:
             iter_start_time = time.time()
         total_steps += opt.batchSize
@@ -77,6 +84,12 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         # calculate final loss scalar
         loss_D = (loss_dict['D_fake'] + loss_dict['D_real']) * 0.5
         loss_G = loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat',0) + loss_dict.get('G_VGG',0)
+        comet_logger.log_metrics(loss_dict, step=global_step,
+                                 epoch=epoch)
+        comet_logger.log_metric("loss_D", loss_D, step=global_step,
+                                epoch=epoch)
+        comet_logger.log_metric("loss_G", loss_G, step=global_step,
+                                epoch=epoch)
 
         ############### Backward Pass ####################
         # update generator weights
@@ -110,6 +123,10 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
                                    ('synthesized_image', util.tensor2im(generated.data[0])),
                                    ('real_image', util.tensor2im(data['image'][0]))])
             visualizer.display_current_results(visuals, epoch, total_steps)
+            comet_logger.log_image(util.tensor2im(generated.data[0]),
+                                   name="synthesized_image")
+            comet_logger.log_image(data['image'][0], name="real_image",
+                                   image_channels="first")
 
         ### save latest model
         if total_steps % opt.save_latest_freq == save_delta:
